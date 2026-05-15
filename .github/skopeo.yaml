@@ -42,5 +42,5 @@ jobs:
       - name: Copy image from Docker Hub to ACR
         run: |
           skopeo copy \
-            docker://docker.io/library/nginx:latest \
-            docker://${{ secrets.ACR_NAME }}.azurecr.io/nginx:latest
+            docker://docker.io/alam65/aci-devops-agent:v1 \
+            docker://${{ secrets.ACR_NAME }}.azurecr.io/aci-devops-agent:v1
