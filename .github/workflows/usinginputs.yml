@@ -1,4 +1,4 @@
-name: Copy Microservice Images
+name: Copy Microservice Images use input
 
 on:
   workflow_dispatch:
