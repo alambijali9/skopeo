@@ -1,0 +1,78 @@
+name: Copy Microservice Images
+
+on:
+  workflow_dispatch:
+    inputs:
+
+      repository:
+        description: "Microservice repository name"
+        required: true
+        type: string
+
+      top_tags:
+        description: "Number of latest tags"
+        required: true
+        default: "5"
+        type: string
+
+jobs:
+  copy-images:
+    runs-on: ubuntu-latest
+
+    env:
+      SRC_ACR: mysourceacr
+      DEST_ACR: mydestacr
+
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y skopeo jq
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login Source ACR
+        run: |
+          skopeo login ${SRC_ACR}.azurecr.io \
+            -u ${{ secrets.SRC_ACR_USERNAME }} \
+            -p ${{ secrets.SRC_ACR_PASSWORD }}
+
+      - name: Login Destination ACR
+        run: |
+          skopeo login ${DEST_ACR}.azurecr.io \
+            -u ${{ secrets.DEST_ACR_USERNAME }} \
+            -p ${{ secrets.DEST_ACR_PASSWORD }}
+
+      - name: Fetch Latest Tags
+        run: |
+
+          az acr repository show-tags \
+            --name $SRC_ACR \
+            --repository "${{ github.event.inputs.repository }}" \
+            --orderby time_desc \
+            --top "${{ github.event.inputs.top_tags }}" \
+            --output tsv > tags.txt
+
+          echo "Tags Found:"
+          cat tags.txt
+
+      - name: Copy Images
+        run: |
+
+          while read tag; do
+
+            echo "Copying image:"
+            echo "${{ github.event.inputs.repository }}:$tag"
+
+            skopeo copy --all \
+              docker://${SRC_ACR}.azurecr.io/${{ github.event.inputs.repository }}:$tag \
+              docker://${DEST_ACR}.azurecr.io/${{ github.event.inputs.repository }}:$tag
+
+          done < tags.txt
