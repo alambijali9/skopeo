@@ -20,8 +20,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      SRC_ACR: mysourceacr
-      DEST_ACR: mydestacr
+      SRC_ACR: azacrsub1est
+      DEST_ACR: azacrsub2est
 
     steps:
 
