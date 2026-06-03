@@ -1,0 +1,92 @@
+name: Copy Microservice Images using expose token
+
+on:
+  workflow_dispatch:
+    inputs:
+      repository:
+        description: "Microservice repository name"
+        required: true
+        type: string
+
+      top_tags:
+        description: "Number of latest tags"
+        required: true
+        default: "5"
+        type: string
+
+permissions:
+id-token: write
+contents: read
+
+jobs:
+  copy-images:
+  runs-on: ubuntu-latest
+  
+  env:
+    SRC_ACR: azacrsub1est
+    DEST_ACR: azacrsub2est
+
+  steps:
+    - name: Install Tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y skopeo jq
+
+    - name: Azure Login (OIDC)
+      uses: azure/login@v3
+      with:
+        client-id: ${{ vars.AZURE_CLIENT_ID }}
+        tenant-id: ${{ vars.AZURE_TENANT_ID }}
+        subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+    - name: Login Source ACR
+      run: |
+        SRC_TOKEN=$(az acr login \
+          --name $SRC_ACR \
+          --expose-token \
+          --output tsv \
+          --query accessToken)
+
+        skopeo login ${SRC_ACR}.azurecr.io \
+          --username 00000000-0000-0000-0000-000000000000 \
+          --password "$SRC_TOKEN"
+
+    - name: Login Destination ACR
+      run: |
+        DEST_TOKEN=$(az acr login \
+          --name $DEST_ACR \
+          --expose-token \
+          --output tsv \
+          --query accessToken)
+  
+        skopeo login ${DEST_ACR}.azurecr.io \
+          --username 00000000-0000-0000-0000-000000000000 \
+          --password "$DEST_TOKEN"
+
+    - name: Fetch Latest Tags
+      run: |
+  
+        az acr repository show-tags \
+          --name $SRC_ACR \
+          --repository "${{ github.event.inputs.repository }}" \
+          --orderby time_desc \
+          --top "${{ github.event.inputs.top_tags }}" \
+          --output tsv > tags.txt
+
+        echo "Tags Found:"
+        cat tags.txt
+
+    - name: Copy Images
+      run: |
+  
+        while read tag; do
+  
+          echo "Copying image:"
+          echo "${{ github.event.inputs.repository }}:$tag"
+
+        skopeo copy --all \
+          docker://${SRC_ACR}.azurecr.io/${{ github.event.inputs.repository }}:$tag \
+          docker://${DEST_ACR}.azurecr.io/${{ github.event.inputs.repository }}:$tag
+
+      done < tags.txt
+```
