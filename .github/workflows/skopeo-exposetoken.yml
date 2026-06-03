@@ -79,15 +79,14 @@ jobs:
 
     - name: Copy Images
       run: |
-  
-        while read tag; do
-  
-          echo "Copying image:"
-          echo "${{ github.event.inputs.repository }}:$tag"
 
-        skopeo copy --all \
-          docker://${SRC_ACR}.azurecr.io/${{ github.event.inputs.repository }}:$tag \
-          docker://${DEST_ACR}.azurecr.io/${{ github.event.inputs.repository }}:$tag
+          while read tag; do
 
-      done < tags.txt
+            echo "Copying image:"
+            echo "${{ github.event.inputs.repository }}:$tag"
 
+            skopeo copy --all \
+              docker://${SRC_ACR}.azurecr.io/${{ github.event.inputs.repository }}:$tag \
+              docker://${DEST_ACR}.azurecr.io/${{ github.event.inputs.repository }}:$tag
+
+          done < tags.txt
