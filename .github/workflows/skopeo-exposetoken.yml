@@ -25,7 +25,7 @@ jobs:
   
     env:
       SRC_ACR: embacrsmart
-      DEST_ACR: acrabcd1
+      DEST_ACR: sub2acr
 
     steps:
       - name: Install Tools
