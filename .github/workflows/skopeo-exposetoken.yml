@@ -90,4 +90,4 @@ jobs:
           docker://${DEST_ACR}.azurecr.io/${{ github.event.inputs.repository }}:$tag
 
       done < tags.txt
-```
+
