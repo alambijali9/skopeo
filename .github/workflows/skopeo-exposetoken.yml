@@ -23,8 +23,8 @@ jobs:
   runs-on: ubuntu-latest
   
   env:
-    SRC_ACR: azacrsub1est
-    DEST_ACR: azacrsub2est
+    SRC_ACR: embacrsmart
+    DEST_ACR: acrabcd1
 
   steps:
     - name: Install Tools
