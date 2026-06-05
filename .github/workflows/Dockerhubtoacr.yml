@@ -1,0 +1,46 @@
+name: Copy Image Between ACRs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  copy-image:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install skopeo
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y skopeo
+
+      # - name: Login to Source ACR
+      #   run: |
+      #     skopeo login \
+      #       --username ${{ secrets.SRC_ACR_USERNAME }} \
+      #       --password ${{ secrets.SRC_ACR_PASSWORD }} \
+      #       ${{ secrets.SRC_ACR_NAME }}.azurecr.io
+
+      - name: Login to Docker Hub
+        run: |
+          skopeo login docker.io \
+            --username ${{ secrets.DOCKERHUB_USERNAME }} \
+            --password ${{ secrets.DOCKERHUB_PASSWORD }}
+
+      - name: Login to Destination ACR
+        run: |
+          skopeo login \
+            --username ${{ secrets.DEST_ACR_USERNAME }} \
+            --password ${{ secrets.DEST_ACR_PASSWORD }} \
+            ${{ secrets.DEST_ACR_NAME }}.azurecr.io
+
+      # - name: Copy image
+      #   run: |
+      #     skopeo copy \
+      #       docker://${{ secrets.SRC_ACR_NAME }}.azurecr.io/myapp:v1 \
+      #       docker://${{ secrets.DEST_ACR_NAME }}.azurecr.io/myapp:v1
+
+      - name: Copy image from Docker Hub to ACR
+        run: |
+          skopeo copy \
+            docker://docker.io/alam65/aci-devops-agent:v1 \
+            docker://${{ secrets.ACR_NAME }}.azurecr.io/aci-devops-agent:v1
