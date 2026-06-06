@@ -1,3 +1,4 @@
+
 name: Copy images and Source repo and Dest repo name different.
 
 on:
@@ -24,8 +25,8 @@ jobs:
     runs-on: ubuntu-latest
 
   env:
-    SRC_ACR: azacrsub1est
-    DEST_ACR: azacrsub2est
+    SRC_ACR: container1test
+    DEST_ACR: container2test
 
   steps:
     - name: Install Tools
@@ -43,6 +44,8 @@ jobs:
         skopeo login ${SRC_ACR}.azurecr.io \
           -u "${{ secrets.SRC_ACR_USERNAME }}" \
           -p "${{ secrets.SRC_ACR_PASSWORD }}"
+
+
   
     - name: Login Destination ACR
       run: |
@@ -63,29 +66,50 @@ jobs:
   
         echo "Tags Found:"
         cat tags.txt
-  
-    - name: Copy Images
-      run: |
-        while read -r tag; do
-  
-          echo "------------------------------------"
-          echo "Source      : ${{ github.event.inputs.source_repository }}:$tag"
-          echo "Destination : ${{ github.event.inputs.destination_repository }}:$tag"
-          echo "------------------------------------"
-  
-          skopeo copy --all \
-            docker://${SRC_ACR}.azurecr.io/${{ github.event.inputs.source_repository }}:$tag \
-            docker://${DEST_ACR}.azurecr.io/${{ github.event.inputs.destination_repository }}:$tag
-  
-        done < tags.txt
-  
-    - name: Verify Images in Destination
-      run: |
-        echo "Destination Repository: ${{ github.event.inputs.destination_repository }}"
-  
-        az acr repository show-tags \
-          --name $DEST_ACR \
-          --repository "${{ github.event.inputs.destination_repository }}" \
-          --orderby time_desc \
-          --top "${{ github.event.inputs.top_tags }}"
-  ```
+
+        
+    - name: Upload Tags File
+      uses: actions/upload-artifact@v4
+      with:
+        name: images-tags
+        path: tags.txt
+  push:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Download Tags File
+        uses: actions/download-artifact@v4
+        with:
+          name: images-tags
+          path: .
+
+      - name: Verify Tags
+        run: |
+          echo "Downloaded tags:"
+          cat tags.txt
+
+      - name: Copy Images
+        run: |
+          while read -r tag; do
+    
+            echo "------------------------------------"
+            echo "Source      : ${{ github.event.inputs.source_repository }}:$tag"
+            echo "Destination : ${{ github.event.inputs.destination_repository }}:$tag"
+            echo "------------------------------------"
+    
+            skopeo copy --all \
+              docker://${SRC_ACR}.azurecr.io/${{ github.event.inputs.source_repository }}:$tag \
+              docker://${DEST_ACR}.azurecr.io/${{ github.event.inputs.destination_repository }}:$tag
+    
+          done < tags.txt
+      
+      - name: Verify Images in Destination
+        run: |
+          echo "Destination Repository: ${{ github.event.inputs.destination_repository }}"
+    
+          az acr repository show-tags \
+            --name $DEST_ACR \
+            --repository "${{ github.event.inputs.destination_repository }}" \
+            --orderby time_desc \
+            --top "${{ github.event.inputs.top_tags }}"
+
