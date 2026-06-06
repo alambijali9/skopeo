@@ -132,12 +132,14 @@ jobs:
 
           done < tags.txt
 
-      - name: Verify Images in Destination
-        run: |
-          echo "Destination Repository: ${{ github.event.inputs.destination_repository }}"
+          # not required below
 
-          az acr repository show-tags \
-            --name $DEST_ACR \
-            --repository "${{ github.event.inputs.destination_repository }}" \
-            --orderby time_desc \
-            --top "${{ github.event.inputs.top_tags }}"
+      # - name: Verify Images in Destination
+      #   run: |
+      #     echo "Destination Repository: ${{ github.event.inputs.destination_repository }}"
+
+      #     az acr repository show-tags \
+      #       --name $DEST_ACR \
+      #       --repository "${{ github.event.inputs.destination_repository }}" \
+      #       --orderby time_desc \
+      #       --top "${{ github.event.inputs.top_tags }}"
