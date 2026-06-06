@@ -1,86 +1,95 @@
-
-name: Copy images and Source repo and Dest repo name different.
+name: Copy images and Source repo and Dest repo name different
 
 on:
   workflow_dispatch:
     inputs:
       source_repository:
-      description: "Source repository name"
-      required: true
-      type: string
+        description: "Source repository name"
+        required: true
+        type: string
 
-    destination_repository:
-      description: "Destination repository name"
-      required: true
-      type: string
-  
-    top_tags:
-      description: "Number of latest tags to copy"
-      required: true
-      default: "5"
-      type: string
+      destination_repository:
+        description: "Destination repository name"
+        required: true
+        type: string
+
+      top_tags:
+        description: "Number of latest tags to copy"
+        required: true
+        default: "5"
+        type: string
 
 jobs:
   copy-images:
     runs-on: ubuntu-latest
 
-  env:
-    SRC_ACR: container1test
-    DEST_ACR: container2test
+    env:
+      SRC_ACR: container1test
+      DEST_ACR: container2test
 
-  steps:
-    - name: Install Tools
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y skopeo jq
-  
-    - name: Azure Login
-      uses: azure/login@v3
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
-  
-    - name: Login Source ACR
-      run: |
-        skopeo login ${SRC_ACR}.azurecr.io \
-          -u "${{ secrets.SRC_ACR_USERNAME }}" \
-          -p "${{ secrets.SRC_ACR_PASSWORD }}"
-
-
-  
-    - name: Login Destination ACR
-      run: |
-        skopeo login ${DEST_ACR}.azurecr.io \
-          -u "${{ secrets.DEST_ACR_USERNAME }}" \
-          -p "${{ secrets.DEST_ACR_PASSWORD }}"
-  
-    - name: Fetch Latest Tags
-      run: |
-        echo "Fetching latest tags from repository: ${{ github.event.inputs.source_repository }}"
-  
-        az acr repository show-tags \
-          --name $SRC_ACR \
-          --repository "${{ github.event.inputs.source_repository }}" \
-          --orderby time_desc \
-          --top "${{ github.event.inputs.top_tags }}" \
-          --output tsv > tags.txt
-  
-        echo "Tags Found:"
-        cat tags.txt
-
-        
-    - name: Upload Tags File
-      uses: actions/upload-artifact@v4
-      with:
-        name: images-tags
-        path: tags.txt
-  push:
-    runs-on: ubuntu-latest
     steps:
+      - name: Install Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y skopeo jq
+
+      # - name: Azure Login
+      #   uses: azure/login@v3
+      #   with:
+      #     creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login Source ACR
+        run: |
+          skopeo login ${SRC_ACR}.azurecr.io \
+            -u "${{ secrets.SRC_ACR_USERNAME }}" \
+            -p "${{ secrets.SRC_ACR_PASSWORD }}"
+
+
+      - name: Fetch Latest Tags
+        run: |
+          echo "Fetching latest tags from repository: ${{ github.event.inputs.source_repository }}"
+
+          az acr repository show-tags \
+            --name $SRC_ACR \
+            --repository "${{ github.event.inputs.source_repository }}" \
+            --orderby time_desc \
+            --top "${{ github.event.inputs.top_tags }}" \
+            --output tsv > tags.txt
+
+          echo "Tags Found:"
+          cat tags.txt
+
+      - name: Upload Tags File
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-tags
+          path: tags.txt
+
+  push:
+    needs: copy-images
+    runs-on: ubuntu-latest
+
+    env:
+      SRC_ACR: container1test
+      DEST_ACR: container2test
+
+    steps:
+      - name: Install Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y skopeo jq
+
+
+      - name: Login Destination ACR
+        run: |
+          skopeo login ${DEST_ACR}.azurecr.io \
+            -u "${{ secrets.DEST_ACR_USERNAME }}" \
+            -p "${{ secrets.DEST_ACR_PASSWORD }}"
 
       - name: Download Tags File
         uses: actions/download-artifact@v4
         with:
-          name: images-tags
+          name: image-tags
           path: .
 
       - name: Verify Tags
@@ -91,25 +100,24 @@ jobs:
       - name: Copy Images
         run: |
           while read -r tag; do
-    
+
             echo "------------------------------------"
             echo "Source      : ${{ github.event.inputs.source_repository }}:$tag"
             echo "Destination : ${{ github.event.inputs.destination_repository }}:$tag"
             echo "------------------------------------"
-    
+
             skopeo copy --all \
               docker://${SRC_ACR}.azurecr.io/${{ github.event.inputs.source_repository }}:$tag \
               docker://${DEST_ACR}.azurecr.io/${{ github.event.inputs.destination_repository }}:$tag
-    
+
           done < tags.txt
-      
+
       - name: Verify Images in Destination
         run: |
           echo "Destination Repository: ${{ github.event.inputs.destination_repository }}"
-    
+
           az acr repository show-tags \
             --name $DEST_ACR \
             --repository "${{ github.event.inputs.destination_repository }}" \
             --orderby time_desc \
             --top "${{ github.event.inputs.top_tags }}"
-
