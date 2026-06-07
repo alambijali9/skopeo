@@ -143,3 +143,21 @@ jobs:
       #       --repository "${{ github.event.inputs.destination_repository }}" \
       #       --orderby time_desc \
       #       --top "${{ github.event.inputs.top_tags }}"
+
+
+#reverse order coppy
+
+- name: Copy Images
+  run: |
+    tac tags.txt | while read -r tag; do
+
+      echo "------------------------------------"
+      echo "Source      : ${{ github.event.inputs.source_repository }}:$tag"
+      echo "Destination : ${{ github.event.inputs.destination_repository }}:$tag"
+      echo "------------------------------------"
+
+      skopeo copy --all \
+        docker://${SRC_ACR}.azurecr.io/${{ github.event.inputs.source_repository }}:$tag \
+        docker://${DEST_ACR}.azurecr.io/${{ github.event.inputs.destination_repository }}:$tag
+
+    done
